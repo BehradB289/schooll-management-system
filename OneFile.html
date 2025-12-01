@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سامانه مدرسه | علوم پزشکی دوره دوم پسرانه شیراز</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDKs (Compat Version) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Noto Sans Arabic Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Noto Sans Arabic"', 'sans-serif'],
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.5s ease-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Noto Sans Arabic', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555; 
+        }
+        @media print {
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- Main Application Logic Inlined for Stability -->
+    <script type="text/babel" data-presets="react">
+      const { useState, useEffect, useMemo, useRef } = React;
+      const { createRoot } = ReactDOM;
+
+      // --- FIREBASE CONFIGURATION & INIT ---
+      const firebaseConfig = JSON.parse(__firebase_config);
+      
+      // Initialize Firebase only once
+      if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+      const getCollectionRef = (collectionName) => {
+        return db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName);
+      };
+
+      // --- ICONS (Inline SVGs) ---
+      const Icons = {
+        User: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+        Lock: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+        LogOut: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+        Book: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
+        Calculator: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="8" y1="18" x2="8" y2="18"/></svg>,
+        Bot: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>,
+        Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+        Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+        Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+        AlertTriangle: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+        Printer: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
+        Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      };
+
+      // --- LOGIN COMPONENT ---
+      const Login = ({ onLogin }) => {
+        const [email, setEmail] = useState("");
+        const [password, setPassword] = useState("");
+        const [error, setError] = useState(null);
+        const [loading, setLoading] = useState(false);
+
+        const handleSubmit = async (e) => {
+          e.preventDefault();
+          setLoading(true);
+          setError(null);
+          try {
+            const usersRef = getCollectionRef('users');
+            // NOTE: For a real app, use Firebase Authentication, not Firestore queries for login
+            const query = usersRef.where("email", "==", email).where("password", "==", password);
+            const querySnapshot = await query.get();
+
+            if (!querySnapshot.empty) {
+              const userData = querySnapshot.docs[0].data();
+              onLogin({ ...userData, id: querySnapshot.docs[0].id });
+            } else {
+              // Check for default admin creation if no users exist (hidden in UI)
+              const allUsers = await usersRef.get();
+              if (allUsers.empty && email === "admin@school.com" && password === "admin") {
+                 // --- HIDDEN ADMIN CREATION LOGIC ---
+                 const newAdmin = {
+                   email: "admin@school.com",
+                   password: "admin", 
+                   name: "مدیر کل سیستم",
+                   role: "super_admin",
+                   createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                 };
+                 const docRef = await usersRef.add(newAdmin);
+                 onLogin({ ...newAdmin, id: docRef.id });
+              } else {
+                throw new Error("نام کاربری یا رمز عبور اشتباه است.");
+              }
+            }
+          } catch (err) {
+            setError(err.message);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        return (
+          <div className="flex items-center justify-center min-h-screen bg-gray-100">
+            <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl border-t-4 border-teal-600">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-gray-800">مدرسه علوم پزشکی دوره دوم پسرانه شیراز</h1>
+                <p className="text-sm text-gray-500 mt-2">سامانه مدیریت یکپارچه (Ultimate ERP)</p>
+              </div>
+              
+              {error && (
+                <div className="p-3 text-sm text-red-700 bg-red-100 rounded-lg flex items-center gap-2">
+                  <Icons.AlertTriangle />
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ایمیل کاربری</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                      <Icons.User />
+                    </span>
+                    <input
+                      type="email"
+                      required
+                      className="w-full py-2 pr-10 pl-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      placeholder="name@school.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">رمز عبور</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                      <Icons.Lock />
+                    </span>
+                    <input
+                      type="password"
+                      required
+                      className="w-full py-2 pr-10 pl-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full px-4 py-2 text-white bg-teal-600 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                >
+                  {loading ? "در حال ورود..." : "ورود به سامانه"}
+                </button>
+              </form>
+            </div>
+          </div>
+        );
+      };
+
+      // --- LOGOUT & WIDGETS ---
+      const LogoutButton = ({ onLogout }) => {
+        const [showConfirm, setShowConfirm] = useState(false);
+        return (
+          <>
+            <button
+              onClick={() => setShowConfirm(true)}
+              className="fixed top-4 left-4 z-50 flex items-center justify-center w-10 h-10 text-white bg-red-600 rounded-full shadow-lg hover:bg-red-700 focus:outline-none transition-transform hover:scale-110"
+              title="خروج"
+            >
+              <Icons.LogOut />
+            </button>
+            {showConfirm && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+                <div className="bg-white p-6 rounded-lg shadow-xl w-80 text-center">
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">تایید خروج</h3>
+                  <p className="text-sm text-gray-600 mb-6">آیا از حساب کاربری مدرسه علوم پزشکی دوره دوم پسرانه شیراز خارج می‌شوید؟</p>
+                  <div className="flex justify-center space-x-2 space-x-reverse">
+                    <button onClick={() => setShowConfirm(false)} className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded hover:bg-gray-300">انصراف</button>
+                    <button onClick={() => { onLogout(); setShowConfirm(false); }} className="px-4 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700">بله، خروج</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      };
+      
+      // --- CALCULATION LOGIC CLASS (Ensures complete code structure change) ---
+      // کلاس ماشین حساب برای مدیریت حالت و منطق محاسبه (بدون استفاده از eval)
+      class SafeCalculator {
+          constructor() {
+              this.currentOperand = '0';
+              this.previousOperand = '';
+              this.operation = undefined;
+              this.resetAfterEqual = false;
+          }
+
+          clear() {
+              this.currentOperand = '0';
+              this.previousOperand = '';
+              this.operation = undefined;
+              this.resetAfterEqual = false;
+          }
+
+          appendNumber(number) {
+              if (this.currentOperand === 'Error') {
+                  this.currentOperand = number;
+                  return;
+              }
+              if (this.resetAfterEqual) {
+                  this.currentOperand = number;
+                  this.resetAfterEqual = false;
+                  return;
+              }
+              if (number === '.' && this.currentOperand.includes('.')) return;
+              if (this.currentOperand === '0' && number !== '.') {
+                  this.currentOperand = number;
+              } else {
+                  this.currentOperand = this.currentOperand.toString() + number.toString();
+              }
+          }
+
+          chooseOperation(operation) {
+              if (this.currentOperand === 'Error') return;
+              if (this.currentOperand === '') return;
+              if (this.previousOperand !== '') {
+                  this.compute();
+              }
+              this.operation = operation;
+              this.previousOperand = this.currentOperand;
+              this.currentOperand = '';
+          }
+
+          compute() {
+              let computation;
+              const prev = parseFloat(this.previousOperand);
+              const current = parseFloat(this.currentOperand);
+              if (isNaN(prev) || isNaN(current)) return;
+
+              switch (this.operation) {
+                  case '+':
+                      computation = prev + current;
+                      break;
+                  case '-':
+                      computation = prev - current;
+                      break;
+                  case '*':
+                      computation = prev * current;
+                      break;
+                  case '/':
+                      if (current === 0) {
+                          this.currentOperand = 'Error';
+                          this.previousOperand = '';
+                          this.operation = undefined;
+                          return;
+                      }
+                      computation = prev / current;
+                      break;
+                  default:
+                      return;
+              }
+              
+              // Rounding for floating point precision issues
+              this.currentOperand = parseFloat(computation.toFixed(10)).toString();
+              this.operation = undefined;
+              this.previousOperand = '';
+              this.resetAfterEqual = true;
+          }
+
+          // Single operand scientific functions
+          scientificOperation(op) {
+              if (this.currentOperand === 'Error' || this.currentOperand === '') return;
+              const num = parseFloat(this.currentOperand);
+              if (isNaN(num)) return;
+              let result;
+
+              switch (op) {
+                  case 'sin':
+                      result = Math.sin(num * Math.PI / 180); // Assume degrees for simplicity
+                      break;
+                  case 'cos':
+                      result = Math.cos(num * Math.PI / 180); // Assume degrees
+                      break;
+                  case 'tan':
+                      result = Math.tan(num * Math.PI / 180); // Assume degrees
+                      break;
+                  case 'sqrt':
+                      if (num < 0) {
+                          this.currentOperand = 'Error';
+                          return;
+                      }
+                      result = Math.sqrt(num);
+                      break;
+                  default:
+                      return;
+              }
+              
+              if (isNaN(result) || !isFinite(result)) {
+                  this.currentOperand = 'Error';
+              } else {
+                  this.currentOperand = parseFloat(result.toFixed(10)).toString();
+              }
+              this.resetAfterEqual = true;
+          }
+
+          getDisplay() {
+              if (this.currentOperand === '') {
+                  return this.previousOperand;
+              }
+              return this.currentOperand;
+          }
+      }
+
+      // *** REACT COMPONENT USING THE CLASS ***
+      const CalculatorWidget = () => {
+        // از useRef برای نگهداری نمونه کلاس ماشین حساب استفاده کنید تا در رندرها حفظ شود
+        const calculatorRef = useRef(new SafeCalculator());
+        // از useState برای اجبار به رندر مجدد در زمان تغییر نمایشگر استفاده کنید
+        const [display, setDisplay] = useState(calculatorRef.current.getDisplay());
+        
+        // تابع برای به‌روزرسانی state نمایشگر از کلاس
+        const updateDisplay = () => {
+            setDisplay(calculatorRef.current.getDisplay());
+        };
+
+        const handleBtn = (b) => {
+            const calculator = calculatorRef.current;
+            
+            if (!isNaN(b) || b === '.') {
+                calculator.appendNumber(b);
+            } else if (b === 'C') {
+                calculator.clear();
+            } else if (b === '=') {
+                calculator.compute();
+            } else if (['/', '*', '-', '+'].includes(b)) {
+                calculator.chooseOperation(b);
+            } else if (['sin', 'cos', 'tan', 'sqrt'].includes(b)) {
+                calculator.scientificOperation(b);
+            }
+            
+            updateDisplay();
+        };
+
+        const buttons = [
+          ['C', 'sin', 'cos', 'tan'],
+          ['7', '8', '9', '/'],
+          ['4', '5', '6', '*'],
+          ['1', '2', '3', '-'],
+          ['0', '.', '=', '+']
+        ];
+        
+        return (
+          <div className="bg-gray-800 text-white p-4 rounded-lg shadow-lg w-full max-w-xs mx-auto mt-4 border border-gray-600">
+            <div className="mb-2 text-xs text-gray-400">ماشین حساب دبیر (با منطق شیءگرا)</div>
+            <div className="bg-black text-green-400 font-mono text-xl p-2 rounded mb-3 text-left overflow-x-auto min-h-[3rem] flex items-center justify-end">
+                {/* نمایشگر اصلی */}
+                <div className={`transition-all duration-150 ${display === 'Error' ? 'text-red-400' : ''}`}>
+                    {display}
+                </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2 text-sm">
+              {buttons.flat().map(b => {
+                const isOperator = ['/', '*', '-', '+'].includes(b);
+                const isScientific = ['sin', 'cos', 'tan', 'sqrt'].includes(b);
+                const isClear = b === 'C';
+                const isEquals = b === '=';
+
+                let baseClass = 'bg-gray-700 hover:bg-gray-600';
+                if (isClear) baseClass = 'bg-red-700 hover:bg-red-600';
+                else if (isEquals) baseClass = 'bg-teal-600 hover:bg-teal-500';
+                else if (isOperator) baseClass = 'bg-orange-600 hover:bg-orange-500';
+                else if (isScientific) baseClass = 'bg-indigo-700 hover:bg-indigo-600';
+                
+                return (
+                  <button 
+                    key={b} 
+                    onClick={()=>handleBtn(b)} 
+                    className={`p-3 rounded transition-colors ${baseClass} active:scale-95`}
+                  >
+                    {b}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+
+      // --- AI ASSISTANT WITH API KEY INPUT ---
+      const AIAssistant = () => {
+        const [query, setQuery] = useState("");
+        const [response, setResponse] = useState("");
+        const [loading, setLoading] = useState(false);
+        const [apiKey, setApiKey] = useState(localStorage.getItem('geminiApiKey') || "");
+        const [showSettings, setShowSettings] = useState(false);
+
+        // Save API Key to localStorage when it changes
+        useEffect(() => {
+            localStorage.setItem('geminiApiKey', apiKey);
+        }, [apiKey]);
+        
+        const askAI = async () => {
+          if (!query) return;
+          if (!apiKey.trim()) {
+             setResponse("لطفاً ابتدا API Key را از بخش تنظیمات (آیکون چرخ‌دنده) وارد کنید.");
+             return;
+          }
+          setLoading(true);
+          setResponse("در حال دریافت پاسخ...");
+
+          // Actual Gemini API Call Logic Placeholder
+          const systemPrompt = "Act as an academic assistant for a high school teacher in Shiraz, Iran. Provide concise, factual answers to help with lesson planning or quick scientific checks. Respond in Persian.";
+          const userQuery = query;
+          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+          
+          const payload = {
+              contents: [{ parts: [{ text: userQuery }] }],
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              tools: [{ "google_search": {} }],
+          };
+
+          const doFetch = async (retries = 3, delay = 1000) => {
+              for (let i = 0; i < retries; i++) {
+                  try {
+                      const apiResponse = await fetch(apiUrl, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(payload)
+                      });
+
+                      if (!apiResponse.ok) {
+                          if (apiResponse.status === 429 && i < retries - 1) { // Throttle
+                              await new Promise(resolve => setTimeout(resolve, delay));
+                              delay *= 2;
+                              continue;
+                          }
+                          throw new Error(`HTTP error! status: ${apiResponse.status}`);
+                      }
+
+                      const result = await apiResponse.json();
+                      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "پاسخی از هوش مصنوعی دریافت نشد.";
+                      const groundingMetadata = result.candidates?.[0]?.groundingMetadata;
+                      let sources = [];
+
+                      if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                          sources = groundingMetadata.groundingAttributions
+                              .map(attribution => ({
+                                  uri: attribution.web?.uri,
+                                  title: attribution.web?.title,
+                              }))
+                              .filter(source => source.uri && source.title);
+                      }
+                      
+                      let fullResponse = text;
+                      if (sources.length > 0) {
+                          fullResponse += "\n\n**منابع:**\n" + sources.map(s => `- ${s.title} (${new URL(s.uri).hostname})`).join('\n');
+                      }
+
+                      return fullResponse;
+
+                  } catch (error) {
+                      if (i === retries - 1) throw error;
+                      await new Promise(resolve => setTimeout(resolve, delay));
+                      delay *= 2;
+                  }
+              }
+              // Fallback return if all retries fail
+              return "خطای ناشناخته در اتصال به سرویس هوش مصنوعی.";
+          };
+
+          try {
+              const aiText = await doFetch();
+              setResponse(aiText);
+          } catch (error) {
+              setResponse(`خطا در برقراری ارتباط با هوش مصنوعی: ${error.message}`);
+          } finally {
+              setLoading(false);
+          }
+        };
+
+        return (
+          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 mt-4 relative">
+            <div className="flex justify-between items-center mb-2 text-indigo-800 font-bold">
+              <div className="flex items-center gap-2">
+                <Icons.Bot />
+                <span>دستیار هوشمند (Gemini)</span>
+              </div>
+              <button onClick={() => setShowSettings(!showSettings)} className="text-gray-500 hover:text-indigo-600 p-1" title="تنظیمات API">
+                <Icons.Settings />
+              </button>
+            </div>
+            
+            {showSettings && (
+              <div className="mb-3 p-2 bg-white rounded border border-indigo-100 animate-fade-in">
+                <label className="block text-xs text-gray-600 mb-1">Google Gemini API Key:</label>
+                <input 
+                  type="password" 
+                  value={apiKey} 
+                  onChange={(e) => setApiKey(e.target.value)} 
+                  className="w-full p-1 text-xs border rounded mb-1 text-left"
+                  placeholder="کلید API خود را اینجا وارد کنید..."
+                />
+                <p className="text-[10px] text-gray-400">کلید شما فقط در مرورگر ذخیره می‌شود.</p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <textarea
+                className="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-indigo-300"
+                rows="3"
+                placeholder="سوال خود را بپرسید (مثلاً طرح درس 'فتوسنتز' را در سه مرحله بنویسید)..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+              ></textarea>
+              <button
+                onClick={askAI}
+                disabled={loading || !query.trim()}
+                className="w-full py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {loading ? "در حال پردازش..." : "ارسال به هوش مصنوعی"}
+              </button>
+              {response && (
+                <div className="p-2 mt-2 text-sm bg-white rounded border border-gray-200 animate-fade-in whitespace-pre-wrap">
+                  <div className="font-bold mb-1 border-b pb-1">پاسخ هوش مصنوعی:</div>
+                  {response}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      // --- PANELS ---
+      const SuperAdminPanel = ({ currentUser }) => {
+        const [users, setUsers] = useState([]);
+        const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "student", classId: "" });
+        
+        useEffect(() => {
+          const unsubscribe = getCollectionRef('users').onSnapshot(snapshot => {
+            setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+          });
+          return () => unsubscribe();
+        }, []);
+
+        const handleAddUser = async (e) => {
+          e.preventDefault();
+          
+          if (newUser.role !== 'super_admin' && !newUser.classId) {
+              console.error("لطفاً برای دانش‌آموز یا دبیر، فیلد کلاس را پر کنید.");
+              return;
+          }
+          if (users.some(u => u.email === newUser.email)) {
+             console.error("کاربری با این ایمیل از قبل وجود دارد.");
+             return;
+          }
+
+          try {
+            await getCollectionRef('users').add({ ...newUser, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+            setNewUser({ name: "", email: "", password: "", role: "student", classId: "" });
+            console.log("کاربر با موفقیت اضافه شد.");
+          } catch (err) { console.error("خطا در افزودن کاربر:", err.message); }
+        };
+
+        const roleDisplay = (role) => {
+             if (role === 'super_admin') return 'مدیر کل';
+             if (role === 'teacher') return 'دبیر';
+             if (role === 'student') return 'دانش‌آموز';
+             return role;
+        }
+
+        return (
+          <div className="p-6">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">پنل مدیریت کل - علوم پزشکی دوره دوم پسرانه شیراز</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white p-4 rounded shadow border">
+                  <h3 className="font-bold mb-4 flex items-center gap-2 text-teal-600"><Icons.Plus /> افزودن کاربر</h3>
+                  <form onSubmit={handleAddUser} className="space-y-3">
+                    <input type="text" placeholder="نام" required className="w-full p-2 border rounded" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} />
+                    <input type="email" placeholder="ایمیل" required className="w-full p-2 border rounded text-left" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+                    <input type="text" placeholder="رمز عبور" required className="w-full p-2 border rounded text-left" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} />
+                    <select className="w-full p-2 border rounded" value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})}>
+                      <option value="student">دانش‌آموز</option>
+                      <option value="teacher">دبیر</option>
+                      <option value="super_admin">مدیر کل</option>
+                    </select>
+                    {newUser.role !== 'super_admin' && (
+                      <input type="text" placeholder="کلاس (مثلاً 10/1)" className="w-full p-2 border rounded" value={newUser.classId} onChange={e => setNewUser({...newUser, classId: e.target.value})} />
+                    )}
+                    <button className="w-full bg-teal-600 text-white py-2 rounded hover:bg-teal-700">ثبت کاربر جدید</button>
+                  </form>
+                </div>
+                <div className="lg:col-span-2 bg-white p-4 rounded shadow border overflow-x-auto">
+                   <h3 className="font-bold mb-4">لیست کاربران ({users.length} نفر)</h3>
+                   <table className="w-full text-sm text-right">
+                     <thead className="bg-gray-100"><tr><th className="p-2 text-right">نام</th><th className="p-2 text-center">نقش</th><th className="p-2 text-center">کلاس</th><th className="p-2 text-left">ایمیل</th></tr></thead>
+                     <tbody>
+                       {users.map(u => (
+                         <tr key={u.id} className="border-b hover:bg-teal-50"><td className="p-2">{u.name}</td><td className="p-2 text-center">{roleDisplay(u.role)}</td><td className="p-2 text-center">{u.classId || '-'}</td><td className="p-2 text-left">{u.email}</td></tr>
+                       ))}
+                     </tbody>
+                   </table>
+                </div>
+            </div>
+          </div>
+        );
+      };
+
+      const TeacherPanel = ({ currentUser }) => {
+        const [students, setStudents] = useState([]);
+        const [grades, setGrades] = useState({});
+        
+        // Fetch students of the teacher's class
+        useEffect(() => {
+          const classToFetch = currentUser.classId || "10/1";
+          const unsubscribe = getCollectionRef('users')
+            .where("role","==","student")
+            .where("classId","==", classToFetch)
+            .onSnapshot(s => {
+              setStudents(s.docs.map(d => ({id:d.id, ...d.data()})));
+            });
+          return () => unsubscribe();
+        }, [currentUser.classId]);
+
+        return (
+          <div className="flex flex-col lg:flex-row min-h-screen">
+            <div className="w-full lg:w-72 bg-gray-900 text-white p-4 space-y-6">
+              <h3 className="text-lg font-bold text-center border-b border-gray-700 pb-4">دبیرستان علوم پزشکی دوره دوم پسرانه شیراز</h3>
+              <CalculatorWidget />
+              <AIAssistant />
+            </div>
+            <div className="flex-1 p-6 bg-gray-50">
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">مدیریت کلاس {currentUser.classId || "نامشخص"}</h2>
+              <div className="bg-white rounded shadow p-6">
+                <p className="mb-4 text-gray-600">لیست دانش‌آموزان جهت ثبت نمره (فقط شبیه‌سازی ورود):</p>
+                <div className="space-y-2">
+                  {students.length > 0 ? students.map(s => (
+                    <div key={s.id} className="flex justify-between items-center border-b py-2 bg-gray-50 p-2 rounded hover:shadow-sm transition-all">
+                      <span className="font-medium text-gray-700">{s.name}</span>
+                      <input 
+                        type="number" 
+                        min="0"
+                        max="20"
+                        step="0.25"
+                        className="border p-1 w-24 text-center rounded focus:ring-teal-500 focus:border-teal-500 transition-colors" 
+                        placeholder="نمره (0 تا 20)" 
+                        onChange={(e) => setGrades(prev => ({...prev, [s.id]: e.target.value}))}
+                      />
+                    </div>
+                  )) : (
+                    <div className="text-center py-4 text-gray-400">هنوز دانش‌آموزی در کلاس شما ثبت نشده است.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const StudentPanel = ({ currentUser }) => (
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="flex justify-between items-center mb-8 border-b pb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">کارنامه - علوم پزشکی دوره دوم پسرانه شیراز</h1>
+              <p className="text-gray-500">دانش‌آموز: {currentUser.name}</p>
+            </div>
+            <div className="text-teal-700 font-bold p-2 bg-teal-100 rounded-full text-sm">کلاس: {currentUser.classId || "نامشخص"}</div>
+          </div>
+          <div className="bg-white border p-6 rounded shadow-lg text-center text-gray-500">
+            <Icons.Book />
+            <p className="mt-2">هنوز نمره‌ای برای نمایش ثبت نشده است. لطفاً منتظر اعلام دبیران باشید.</p>
+          </div>
+        </div>
+      );
+
+      // --- APP ROOT ---
+      const App = () => {
+        const [user, setUser] = useState(null);
+        const [loading, setLoading] = useState(true);
+
+        useEffect(() => {
+          const init = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await auth.signInWithCustomToken(__initial_auth_token);
+                } else {
+                    await auth.signInAnonymously();
+                }
+            } catch (error) {
+                console.error("Firebase Auth Error:", error);
+            }
+          };
+          init();
+          
+          const unsubscribe = auth.onAuthStateChanged(() => {
+             // We use a simple timer here to ensure all Firebase connections settle, then set loading to false.
+             setTimeout(() => setLoading(false), 500); 
+          });
+          return () => unsubscribe();
+        }, []);
+
+        if (loading) return <div className="flex items-center justify-center h-screen text-lg font-bold text-teal-600">در حال بارگذاری سامانه مدرسه...</div>;
+        if (!user) return <Login onLogin={setUser} />;
+
+        return (
+          <div dir="rtl" className="font-sans text-gray-800 bg-gray-100 min-h-screen">
+            <LogoutButton onLogout={() => setUser(null)} />
+            {user.role === 'super_admin' && <SuperAdminPanel currentUser={user} />}
+            {user.role === 'teacher' && <TeacherPanel currentUser={user} />}
+            {user.role === 'student' && <StudentPanel currentUser={user} />}
+          </div>
+        );
+      };
+
+      createRoot(document.getElementById("root")).render(<App />);
+    </script>
+</body>
+</html>
