@@ -77,16 +77,40 @@
       const { createRoot } = ReactDOM;
 
       // --- FIREBASE CONFIGURATION & INIT ---
-      const firebaseConfig = JSON.parse(__firebase_config);
+      let firebaseConfig;
+      
+      // بررسی می‌کنیم آیا در محیط جمینای هستیم یا خیر
+      if (typeof __firebase_config !== 'undefined') {
+          // اگر در محیط پیش‌نمایش جمینای هستیم، از کانفیگ خودکار استفاده کن
+          firebaseConfig = JSON.parse(__firebase_config);
+      } else {
+          // *** مهم: وقتی فایل را دانلود کردید، اطلاعات زیر را با اطلاعات پروژه فایربیس خودتان جایگزین کنید ***
+          // برای دریافت این اطلاعات به کنسول فایربیس بروید: Project Settings -> General -> Your apps
+          firebaseConfig = {
+              apiKey: "YOUR_API_KEY_HERE",
+              authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+              projectId: "YOUR_PROJECT_ID",
+              storageBucket: "YOUR_PROJECT_ID.appspot.com",
+              messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+              appId: "YOUR_APP_ID"
+          };
+      }
       
       // Initialize Firebase only once
       if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
+        try {
+            firebase.initializeApp(firebaseConfig);
+        } catch (e) {
+            console.error("Firebase init error. Did you replace the config placeholder?", e);
+            alert("خطا در اتصال به دیتابیس. لطفاً مطمئن شوید تنظیمات Firebase را در فایل HTML جایگزین کرده‌اید.");
+        }
       }
       
       const auth = firebase.auth();
       const db = firebase.firestore();
-      const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+      
+      // اگر روی هاست خودتان هستید، می‌توانید یک شناسه ثابت انتخاب کنید
+      const appId = typeof __app_id !== 'undefined' ? __app_id : 'shiraz-medical-school-app';
 
       const getCollectionRef = (collectionName) => {
         return db.collection('artifacts').doc(appId).collection('public').doc('data').collection(collectionName);
@@ -771,5 +795,4 @@
       createRoot(document.getElementById("root")).render(<App />);
     </script>
 </body>
-
 </html>
